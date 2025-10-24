@@ -14,7 +14,10 @@
       "Bash(./venv/Scripts/pip install:*)",
       "Bash(../venv/Scripts/python -m uvicorn:*)",
       "Bash(npm run dev:*)",
-      "Bash(timeout 5 bash:*)"
+      "Bash(timeout 5 bash:*)",
+      "Bash(git fetch:*)",
+      "Bash(git pull:*)",
+      "Bash(git checkout:*)"
     ],
     "deny": [],
     "ask": []

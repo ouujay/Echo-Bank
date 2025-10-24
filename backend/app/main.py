@@ -29,8 +29,8 @@ async def root():
 async def health_check():
     return {"status": "healthy"}
 
-# Import routers here when created
-# from app.api import voice, transfers, auth
-# app.include_router(voice.router, prefix="/api/v1/voice", tags=["voice"])
-# app.include_router(transfers.router, prefix="/api/v1/transfers", tags=["transfers"])
-# app.include_router(auth.router, prefix="/api/v1/auth", tags=["auth"])
+# Register API routers
+from app.api import transfers, recipients
+
+app.include_router(transfers.router)
+app.include_router(recipients.router)
