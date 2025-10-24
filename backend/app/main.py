@@ -1,12 +1,20 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
+from app.core.database import init_db
+from app.api import voice, transfers, recipients
 
 app = FastAPI(
     title="EchoBank API",
     description="Voice-powered banking assistant API",
     version="1.0.0"
 )
+
+# Initialize database on startup
+@app.on_event("startup")
+async def startup_event():
+    init_db()
+    print("EchoBank API started successfully!")
 
 # CORS Configuration
 app.add_middleware(
@@ -30,7 +38,9 @@ async def health_check():
     return {"status": "healthy"}
 
 # Register API routers
-from app.api import transfers, recipients
+# Developer 1: Voice endpoints
+app.include_router(voice.router)
 
+# Developer 2: Transfers and Recipients endpoints
 app.include_router(transfers.router)
 app.include_router(recipients.router)

@@ -1,6 +1,7 @@
-from app.models.user import User
-from app.models.recipient import Recipient
-from app.models.transaction import Transaction
-from app.models.session import Session
+from .base import Base
+from .user import User
+from .recipient import Recipient
+from .transaction import Transaction
+from .session import Session
 
-__all__ = ["User", "Recipient", "Transaction", "Session"]
+__all__ = ["Base", "User", "Recipient", "Transaction", "Session"]

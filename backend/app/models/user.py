@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, String, Numeric, Boolean, DateTime
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
-from app.core.database import Base
+from .base import Base
 
 
 class User(Base):
@@ -42,4 +42,4 @@ class User(Base):
     sent_transactions = relationship("Transaction", foreign_keys="Transaction.sender_id", back_populates="sender")
 
     def __repr__(self):
-        return f"<User(id={self.id}, account_number='{self.account_number}', name='{self.full_name}')>"
+        return f"<User {self.account_number} - {self.full_name}>"

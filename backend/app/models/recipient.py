@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
-from app.core.database import Base
+from .base import Base
 
 
 class Recipient(Base):
@@ -34,4 +34,4 @@ class Recipient(Base):
     transactions = relationship("Transaction", back_populates="recipient")
 
     def __repr__(self):
-        return f"<Recipient(id={self.id}, name='{self.name}', account='{self.account_number}')>"
+        return f"<Recipient {self.name} - {self.bank_name}>"

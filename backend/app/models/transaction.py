@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, String, Numeric, DateTime, ForeignKey, Text
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
-from app.core.database import Base
+from .base import Base
 
 
 class Transaction(Base):
@@ -31,7 +31,7 @@ class Transaction(Base):
     amount = Column(Numeric(15, 2), nullable=False)
     currency = Column(String(3), default="NGN")
     status = Column(String(20), default="pending")
-    # Status values: pending, pending_pin, pending_confirmation, completed, failed, cancelled
+    # Status: pending, pending_pin, pending_confirmation, completed, failed, cancelled
     session_id = Column(String(100))
     paystack_transfer_code = Column(String(100))
     failure_reason = Column(Text)
@@ -43,4 +43,4 @@ class Transaction(Base):
     recipient = relationship("Recipient", back_populates="transactions")
 
     def __repr__(self):
-        return f"<Transaction(ref='{self.transaction_ref}', amount={self.amount}, status='{self.status}')>"
+        return f"<Transaction {self.transaction_ref} - {self.status}>"
