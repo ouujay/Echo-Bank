@@ -1,0 +1,236 @@
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.modal {
+  background: linear-gradient(135deg, #1a1f3a 0%, #0A0E27 100%);
+  border-radius: 20px;
+  padding: 30px;
+  max-width: 500px;
+  width: 90%;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.header h2 {
+  color: white;
+  font-size: 24px;
+  margin: 0;
+}
+
+.closeBtn {
+  background: transparent;
+  border: none;
+  color: white;
+  font-size: 32px;
+  cursor: pointer;
+  padding: 0;
+  width: 40px;
+  height: 40px;
+  transition: transform 0.2s;
+}
+
+.closeBtn:hover {
+  transform: rotate(90deg);
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.summary {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.summaryRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+}
+
+.summaryRow:not(:last-child) {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.label {
+  color: #A0AEC0;
+  font-size: 14px;
+}
+
+.value {
+  color: white;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.amount {
+  color: #00D9FF;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.pinInputContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.inputLabel {
+  color: white;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.pinInputWrapper {
+  position: relative;
+}
+
+.pinInput {
+  width: 100%;
+  padding: 16px 50px 16px 20px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  color: white;
+  font-size: 24px;
+  letter-spacing: 8px;
+  text-align: center;
+  transition: all 0.2s;
+}
+
+.pinInput:focus {
+  outline: none;
+  border-color: #0066FF;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.pinInput::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.pinInput:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.toggleBtn {
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 20px;
+  padding: 8px;
+  transition: transform 0.2s;
+}
+
+.toggleBtn:hover {
+  transform: translateY(-50%) scale(1.1);
+}
+
+.error {
+  background: rgba(255, 59, 48, 0.1);
+  border: 1px solid rgba(255, 59, 48, 0.3);
+  color: #FF3B30;
+  padding: 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.actions {
+  display: flex;
+  gap: 12px;
+}
+
+.cancelBtn,
+.submitBtn {
+  flex: 1;
+  padding: 14px 24px;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+}
+
+.cancelBtn {
+  background: transparent;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  color: white;
+}
+
+.cancelBtn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.submitBtn {
+  background: linear-gradient(135deg, #0066FF 0%, #0052CC 100%);
+  color: white;
+}
+
+.submitBtn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 102, 255, 0.4);
+}
+
+.submitBtn:disabled,
+.cancelBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
