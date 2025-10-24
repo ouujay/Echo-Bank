@@ -1,0 +1,28 @@
+from sqlalchemy import Column, Integer, String, Numeric, Boolean, DateTime
+from sqlalchemy.sql import func
+from sqlalchemy.orm import relationship
+from .base import Base
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    account_number = Column(String(10), unique=True, nullable=False, index=True)
+    full_name = Column(String(255), nullable=False)
+    email = Column(String(255), unique=True)
+    phone = Column(String(20))
+    pin_hash = Column(String(255), nullable=False)
+    balance = Column(Numeric(15, 2), default=0.00)
+    daily_limit = Column(Numeric(15, 2), default=50000.00)
+    is_active = Column(Boolean, default=True)
+    pin_locked_until = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    # Relationships
+    recipients = relationship("Recipient", back_populates="user", cascade="all, delete-orphan")
+    sent_transactions = relationship("Transaction", foreign_keys="Transaction.sender_id", back_populates="sender")
+
+    def __repr__(self):
+        return f"<User {self.account_number} - {self.full_name}>"
