@@ -1,0 +1,116 @@
+### EchoBank Developer 1 - API Tests
+### Make sure backend is running on http://localhost:8001
+
+### 1. Health Check
+GET http://localhost:8001/health
+
+###
+
+### 2. Root Endpoint
+GET http://localhost:8001/
+
+###
+
+### 3. Test Voice Intent - Transfer Command
+POST http://localhost:8001/api/v1/voice/intent
+Content-Type: application/json
+
+{
+  "transcript": "Send five thousand naira to John",
+  "session_id": "test_session_123"
+}
+
+###
+
+### 4. Test Voice Intent - Check Balance
+POST http://localhost:8001/api/v1/voice/intent
+Content-Type: application/json
+
+{
+  "transcript": "What is my balance",
+  "session_id": "test_session_123"
+}
+
+###
+
+### 5. Test Voice Intent - Add Recipient
+POST http://localhost:8001/api/v1/voice/intent
+Content-Type: application/json
+
+{
+  "transcript": "Add Mary to my beneficiaries",
+  "session_id": "test_session_123"
+}
+
+###
+
+### 6. Test Voice Intent - Confirm Action
+POST http://localhost:8001/api/v1/voice/intent
+Content-Type: application/json
+
+{
+  "transcript": "Yes confirm",
+  "session_id": "test_session_123"
+}
+
+###
+
+### 7. Test Voice Intent - Cancel Action
+POST http://localhost:8001/api/v1/voice/intent
+Content-Type: application/json
+
+{
+  "transcript": "Cancel this transaction",
+  "session_id": "test_session_123"
+}
+
+###
+
+### 8. Test Voice Intent - PIN Entry
+POST http://localhost:8001/api/v1/voice/intent
+Content-Type: application/json
+
+{
+  "transcript": "one two three four",
+  "session_id": "test_session_123"
+}
+
+###
+
+### 9. Get Session State
+GET http://localhost:8001/api/v1/voice/session/test_session_123
+
+###
+
+### 10. Clear Session
+DELETE http://localhost:8001/api/v1/voice/session/test_session_123
+
+###
+
+### 11. Test Large Amount Transfer
+POST http://localhost:8001/api/v1/voice/intent
+Content-Type: application/json
+
+{
+  "transcript": "Transfer twenty thousand naira to David",
+  "session_id": "test_session_456"
+}
+
+###
+
+### 12. Test with Context (continuing conversation)
+POST http://localhost:8001/api/v1/voice/intent
+Content-Type: application/json
+
+{
+  "transcript": "Send 3000 to John Okafor",
+  "session_id": "test_session_789"
+}
+
+###
+
+### NOTE: Audio transcription endpoint requires multipart/form-data with audio file
+### Use this curl command instead:
+### curl -X POST http://localhost:8001/api/v1/voice/transcribe \
+###   -F "audio=@path/to/your/audio.wav" \
+###   -F "session_id=test_session_audio"
