@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir:*)",
+      "Bash(npm create vite@latest frontend -- --template react)",
+      "Bash(npm install)",
+      "Bash(mkdir:*)",
+      "Bash(tree:*)",
+      "Bash(git init:*)",
+      "Bash(git remote:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(./venv/Scripts/pip install:*)",
+      "Bash(../venv/Scripts/python -m uvicorn:*)",
+      "Bash(npm run dev:*)",
+      "Bash(timeout 5 bash:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

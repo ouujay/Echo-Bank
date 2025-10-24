@@ -1,0 +1,299 @@
+Perfect — here’s how to divide the entire EchoBank project into *3 full work packages* — one per developer.
+Each “thing” (work package) can be owned end-to-end by one person, so no confusion about who does what or when to hand off.
+
+Each section below includes:
+
+* Responsibilities
+* Step-by-step tasks
+* Expected deliverables
+* Clear handoff points
+
+---
+
+# 👩🏽‍💻 *Developer 1 – Frontend (React + Modular CSS + Voice UI)*
+
+### 🎯 *Goal*
+
+Build the complete user-facing interface — the voice modal that lives inside Zenith’s app.
+
+### 🧩 *Responsibilities*
+
+* Create React UI components
+* Manage microphone input & upload audio
+* Render assistant replies with text + speech
+* Handle Cancel / Start Over commands visually
+* Ensure accessibility & style compliance
+
+### ✅ *Tasks*
+
+1. *Setup*
+
+   * Initialize React project (create-react-app or Vite).
+   * Install dependencies (axios, react-speech-recognition, modular-css).
+   * Structure folders: components/, styles/, services/.
+
+2. *Voice Modal*
+
+   * Create VoiceModal.jsx with:
+
+     * Header (EchoBank + close button)
+     * Chat area for messages
+     * Mic button with states (Idle, Listening, Processing)
+
+3. *Mic Recording & Upload*
+
+   * Use MediaRecorder API to capture audio.
+   * Convert to WAV or MP3.
+   * POST to /api/transcribe (FastAPI backend).
+   * Display “Listening…” then show the transcribed text once received.
+
+4. *Chat Interface*
+
+   * Build two bubble types: user and assistant.
+   * Maintain chat history in state.
+   * Scroll automatically on new messages.
+
+5. *Text-to-Speech*
+
+   * Integrate window.speechSynthesis to speak assistant responses.
+   * Add toggle for voice playback.
+
+6. *Interrupt UI*
+
+   * Add visible buttons or detect voice commands for:
+
+     * “Cancel” → resets flow
+     * “Start over” → clears session
+   * Handle both visually and via backend event.
+
+7. *Design*
+
+   * Style with Modular CSS:
+
+     * Navy blue (#0A1045), white background (#FFFFFF), rounded corners (12px)
+     * Bold text for key prompts
+     * Progress indicators for each step
+
+8. *Testing & Demo*
+
+   * Simulate real conversation (mock responses from backend).
+   * Record frontend-only demo if backend not yet ready.
+
+### 📦 *Deliverables*
+
+* Working React modal inside mock Zenith shell
+* Mic → Whisper → Chat display → Speech playback
+* Cancel / Start Over buttons functional
+* Responsive and accessible CSS
+
+### 🔁 *Handoff*
+
+* Integrates with *Developer 2’s FastAPI endpoints* (/transcribe, /intent, /state).
+* No direct dependency on Developer 3 (bank integration handled via backend).
+
+---
+
+# 👨🏽‍💻 *Developer 2 – Backend & AI (FastAPI + Whisper + LLM + State Machine)*
+
+### 🎯 *Goal*
+
+Implement all backend logic — receive voice, run AI, manage transaction flow, enforce edge cases.
+
+### 🧩 *Responsibilities*
+
+* FastAPI server setup
+* Whisper integration (speech → text)
+* LLM for intent parsing (text → structured action)
+* State machine logic for 13 flows
+* Session management
+* Conversation context & logging
+
+### ✅ *Tasks*
+
+1. *Project Setup*
+
+   * Create FastAPI project structure:
+     main.py, routes/, services/, models/.
+   * Install: fastapi, pydantic, redis, requests.
+
+2. *Speech-to-Text Endpoint*
+
+   * /api/transcribe:
+
+     * Accept audio file (POST).
+     * Call Whisper API.
+     * Return transcript JSON.
+
+3. *Intent Parsing Endpoint*
+
+   * /api/intent:
+
+     * Input: transcript text.
+     * Call LLM (e.g., GPT-4 or Together AI).
+     * Force JSON output:
+
+       json
+       { "action": "transfer_money", "amount": 5000, "recipient": "John" }
+       
+     * Return structured result.
+
+4. *Conversation & State Machine*
+
+   * Manage states:
+
+     * idle
+     * choose_recipient
+     * awaiting_pin
+     * awaiting_confirm
+     * complete
+   * Implement 13 edge-case handlers (from v4.0 PRD).
+
+5. *Session Handling*
+
+   * Store session data in Redis (or in-memory dict):
+
+     * session_id
+     * current_step
+     * transaction_context
+     * recipientQueue
+   * Reset on “Start over”.
+
+6. *Smart Continuation + Smart Stops*
+
+   * Automatically continue if clear (e.g., one recipient).
+   * Stop for clarification (multiple matches, wrong PIN, unclear voice).
+
+7. *Logging*
+
+   * Save conversation transcript + intents per session.
+   * Return in final JSON for review.
+
+8. *Integrate with Bank APIs (mocked)*
+
+   * Stub functions that Developer 3 will connect:
+
+     * get_balance()
+     * get_recipients()
+     * verify_account()
+     * send_transfer()
+
+9. *Testing*
+
+   * Test each of the 13 flows using dummy data.
+   * Ensure JSON responses are consistent and fast (<3s).
+
+### 📦 *Deliverables*
+
+* Running FastAPI backend with three main endpoints.
+* Full conversation state machine.
+* Works with mock Zenith API (Developer 3).
+* Logs + handles all 13 edge cases.
+
+### 🔁 *Handoff*
+
+* Works directly with Developer 1 (frontend) and Developer 3 (Zenith API integration).
+* Provides stable API endpoints for both.
+
+---
+
+# 👨🏾‍💻 *Developer 3 – Bank Integration & Security (APIs + Auth + Limits)*
+
+### 🎯 *Goal*
+
+Connect EchoBank to Zenith’s backend (or mock), manage tokens, handle PIN and compliance logic.
+
+### 🧩 *Responsibilities*
+
+* Integrate bank APIs for recipients, balance, and transfers.
+* Validate zenith_session_token for authentication.
+* Enforce transaction limits & retries.
+* Secure PIN logic and fraud rules.
+* Prepare QA & test flows.
+
+### ✅ *Tasks*
+
+1. *Token Validation*
+
+   * Accept zenith_session_token on all backend calls.
+   * Mock endpoint to simulate token introspection:
+
+     * /api/session/validate → returns user_id, account_number.
+
+2. *Bank API Integration*
+
+   * Build wrappers:
+
+     * get_recipients(token)
+     * get_balance(token)
+     * verify_account(token, acct_no, bank)
+     * send_transfer(token, data)
+   * Each returns mock data (simulate Zenith sandbox).
+
+3. *Security Rules*
+
+   * *PIN:*
+
+     * Validate against mock database.
+     * Lock account after 3 failed attempts (30-min block).
+   * *Transaction Limits:*
+
+     * Single limit: ₦20,000
+     * Daily limit: ₦50,000
+     * Velocity: 5 tx/hour
+   * Return clear voice-safe messages when breached.
+
+4. *Edge-Case Enforcement*
+
+   * If insufficient balance → suggest smaller amount.
+   * If exceeded limit → offer allowable max.
+   * If wrong PIN → show retry count.
+   * If locked → show support prompt.
+
+5. *Testing*
+
+   * End-to-end test with Developer 2’s backend.
+   * Verify all 13 flows complete without crash.
+   * Mock “network error” and “cancel” flows.
+
+6. *Demo Prep*
+
+   * Record successful 3-flow demo (perfect path, add new recipient, error recovery).
+
+### 📦 *Deliverables*
+
+* Mock Zenith API module ready for live replacement.
+* Token validation logic in FastAPI middleware.
+* Security & limit handling verified.
+* QA sheet covering all scenarios.
+
+### 🔁 *Handoff*
+
+* Works with Developer 2’s backend endpoints.
+* Returns data that frontend (Developer 1) can display cleanly.
+
+---
+
+# 🕐 *Recommended Schedule (24 Hours)*
+
+| Time    | Developer 1              | Developer 2              | Developer 3                   |
+| ------- | ------------------------ | ------------------------ | ----------------------------- |
+| 0–4 h   | UI setup + Mic recording | FastAPI setup + Whisper  | Token + mock recipients       |
+| 4–8 h   | Upload + Chat bubbles    | LLM + Intent logic       | Balance API + Limits          |
+| 8–12 h  | TTS + Interrupt UX       | State machine + PIN flow | PIN validation + lockout      |
+| 12–18 h | Integrate backend APIs   | Edge-case handling       | Transfer + QA                 |
+| 18–24 h | Polish + Record demo     | Logs + Testing           | Final end-to-end test + video |
+
+---
+
+# ✅ *Final Deliverables per Developer*
+
+| Developer                    | Deliverables                        | Output File/Component                               |
+| ---------------------------- | ----------------------------------- | --------------------------------------------------- |
+| *1 – Frontend*             | React modal UI, voice + chat flow   | VoiceModal.jsx, Chat.jsx, MicButton.jsx       |
+| *2 – Backend/AI*           | Whisper + LLM + state machine API   | main.py, routes/voice.py, services/intent.py  |
+| *3 – Integration/Security* | Zenith API mocks, token + PIN logic | bank_api.py, auth_middleware.py, qa_report.md |
+
+---
+
+Would you like me to format this into *three separate “developer briefs”* (one per person, ready to hand out or paste into Notion)?
+Each one would be written like a mini personal instruction sheet for that developer — focused just on their part, no clutter.

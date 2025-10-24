@@ -1,0 +1,325 @@
+Perfect — you’ve got it right.
+You’re describing the **true enterprise integration model** where EchoBank sits *inside the bank’s app* and connects directly to the bank’s APIs for sending money, verifying accounts, fetching recipients, etc.
+
+Here’s the **final comprehensive PRD – Version 4.0** including:
+✅ Embedded deployment (inside Zenith app)
+✅ FastAPI + React architecture
+✅ Whisper + LLM + Smart Continuation/Interrupt
+✅ All 13 edge-case conversation flows
+✅ Data + token exchange with the bank
+✅ Full transfer API integration
+
+---
+
+# **EchoBank – Product Requirements Document (PRD)**
+
+**Version:** 4.0 (Embedded Voice Banking Assistant)
+**Date:** October 25 2025
+**Owner:** TIC Hackathon Team
+**Status:** Final MVP Specification
+**Deployment:** Embedded within Zenith Bank App
+**Target Launch:** Q1 2026 Pilot
+
+---
+
+## 🧠 **Executive Summary**
+
+**EchoBank** is a **voice-powered banking assistant** embedded inside existing bank mobile apps (starting with Zenith Bank).
+It enables visually impaired, elderly, and low-literacy users to perform transactions naturally through conversation.
+
+* **Technology:** Whisper API (STT) + LLM (GPT) + FastAPI + React.js
+* **Integration:** Direct connection to the bank’s internal APIs for auth, recipients, balance, transfers
+* **Goal:** Inclusive banking for 52 million underserved Nigerians
+* **Business Model:** B2B white-label licensing (₦100–150 / user / year)
+
+---
+
+## 🧩 **System Architecture**
+
+| Layer            | Technology                            | Purpose                                                    |
+| ---------------- | ------------------------------------- | ---------------------------------------------------------- |
+| Frontend         | React.js (modal UI inside Zenith app) | Voice UI, TTS, transcript display                          |
+| Voice Layer      | Whisper API                           | Speech → Text transcription                                |
+| AI Layer         | LLM (GPT / Together AI)               | Intent recognition, entity extraction, context tracking    |
+| Backend          | FastAPI                               | Core state machine, validation, integration with bank APIs |
+| Bank Integration | Zenith Bank API Gateway               | Auth, recipients, balance, transfer execution              |
+| Data Cache       | Redis                                 | Session state & conversation context                       |
+| Hosting          | Azure or Bank VPC                     | Secure container deployment                                |
+
+---
+
+## 🏗️ **Deployment Model**
+
+* **Embedded Integration:** EchoBank is a modal component within the official Zenith Bank mobile app.
+* **Invocation:** User taps a mic icon → EchoBank opens as an overlay voice assistant.
+* **Identity:** User is already authenticated via Zenith. The app passes a secure `zenith_session_token` to EchoBank.
+* **Backend Trust:** FastAPI trusts this token to fetch user data and perform transactions through Zenith APIs.
+
+---
+
+## 🔐 **Authentication & Authorization**
+
+### Identity Flow
+
+1. User logs into Zenith Bank normally.
+2. When EchoBank is opened, Zenith injects a short-lived JWT (`zenith_session_token`).
+3. Frontend sends this token with every audio or intent request to FastAPI.
+4. FastAPI verifies token → knows this is Funbi Adeyemi (Authenticated Zenith User).
+
+### Authorization Flow
+
+* Even with a valid token, EchoBank requires:
+  1️⃣ Voice PIN (4 digits, max 3 tries)
+  2️⃣ Explicit “Confirm” command before execution
+
+### Security Layers
+
+| Layer                     | Mechanism                                            |
+| ------------------------- | ---------------------------------------------------- |
+| Auth                      | Bank-issued JWT from Zenith mobile app               |
+| Transaction Authorization | Voice PIN + Confirm                                  |
+| Fraud Prevention          | Velocity checks (5 tx/hour), daily limit enforcement |
+| Session Control           | Auto timeout after 2 minutes idle                    |
+| Device Binding            | Token bound to current device fingerprint            |
+| Audit                     | Full voice and intent log with timestamps            |
+
+---
+
+## 🗄️ **Bank Data Integration Layer**
+
+| Service              | API Used                         | Purpose                               |
+| -------------------- | -------------------------------- | ------------------------------------- |
+| Profile Service      | `GET /api/v1/user/profile`       | Retrieve account number, name, limits |
+| Balance Service      | `GET /api/v1/accounts/balance`   | Get real-time account balance         |
+| Recipient Service    | `GET /api/v1/beneficiaries`      | Fetch saved recipients                |
+| Verification Service | `POST /api/v1/verify_account`    | Confirm new recipient name            |
+| Transfer Service     | `POST /api/v1/transfers`         | Execute money transfer                |
+| Notification Service | `POST /api/v1/notifications/sms` | Send transaction SMS confirmation     |
+
+All calls carry the `zenith_session_token` for authorization.
+
+---
+
+## 💬 **Conversation Flow Engine**
+
+### Pipeline
+
+1. User speaks → Whisper transcribes speech to text
+2. Text → LLM → intent JSON
+3. FastAPI state machine validates intent, queries Zenith data
+4. Response text → frontend → TTS and visual display
+
+### Smart Stops
+
+EchoBank pauses for user input when:
+
+* Multiple matching recipients found
+* PIN required
+* Confirmation required
+* Insufficient funds or limit breach
+* Unclear voice
+
+### Smart Continuation
+
+Automatically continues when:
+
+* Single recipient identified
+* PIN validated successfully
+* Multiple transfers queued (e.g., “Funbi and John”)
+* User corrects a small detail (e.g., amount change)
+
+### Global Interrupts
+
+| Command        | Action                                           |
+| -------------- | ------------------------------------------------ |
+| “Cancel”       | Stops immediately, no money sent                 |
+| “Start over”   | Clears session, returns to main menu             |
+| “Not that one” | Back one step (e.g., choose different recipient) |
+
+---
+
+## 💸 **Core Transfer Flow**
+
+1. **User:** “Send ₦5,000 to John.”
+2. **EchoBank:** Checks Zenith beneficiaries → finds matches.
+3. **If one match:** Goes to PIN step.
+4. **If multiple:** Lists options, waits for choice.
+5. **PIN Stage:** “Please say your 4-digit PIN.”
+6. **Validation:** Zenith auth API verifies PIN.
+7. **Confirm Stage:** “Say confirm to complete.”
+8. **Execution:** FastAPI → Zenith Transfer API → Money sent.
+9. **Response:** ✅ Success message + updated balance + SMS confirmation.
+
+---
+
+## 📚 **Conversation Flows + Edge Cases**
+
+All 13 flows from v 1.1 are retained and extended for the embedded model:
+1️⃣ Happy Path (Saved Recipient)
+2️⃣ Recipient Not Found → Add New
+3️⃣ Insufficient Balance
+4️⃣ Limit Exceeded
+5️⃣ Multiple Recipients (Same Name)
+6️⃣ Wrong PIN with Retries & Lockout
+7️⃣ Mid-Transaction Cancel
+8️⃣ Voice Not Clear → Text Fallback
+9️⃣ Network or API Error
+🔟 Beginner Mode (Step-by-Step)
+11️⃣ Ambiguous Confirmation
+12️⃣ Irrelevant Command → Help Prompt
+13️⃣ Very Small Amount Confirmation
+
+Each flow preserves smart stop / continuation logic and uses Zenith data as ground truth.
+
+---
+
+## 🖥️ **Frontend (UI + UX)**
+
+* **Environment:** React.js + Modular CSS
+* **UI Structure:** Floating voice modal overlay inside Zenith app
+* **Key Elements:**
+  • Mic button (states: idle/listening/processing)
+  • Conversation bubble log (user + EchoBank)
+  • Waveform animation during speech
+  • Large text, high contrast (blue + white palette)
+  • Accessible fonts, 12 px radius elements
+  • Text-to-Speech readback of assistant messages
+
+---
+
+## 🧩 **Data Models**
+
+### Session
+
+```json
+{
+  "session_id": "SESSION123",
+  "user_id": "ZENITH-USER-001",
+  "token": "zenith_session_token",
+  "current_step": "awaiting_pin",
+  "transaction_context": {
+    "recipient": "John Okafor",
+    "amount": 5000,
+    "pin_attempts": 1
+  },
+  "voice_unclear_count": 0,
+  "interrupted": false
+}
+```
+
+---
+
+## 📊 **KPIs**
+
+| Metric                       | Target  |
+| ---------------------------- | ------- |
+| Voice Recognition Accuracy   | > 90 %  |
+| Intent Detection             | > 95 %  |
+| Conversation Completion Rate | > 95 %  |
+| Average Response Time        | < 3 s   |
+| Error Recovery Rate          | > 80 %  |
+| User Satisfaction            | 4.5 / 5 |
+
+---
+
+## 🕐 **24-Hour Hackathon Execution Plan**
+
+| Hour  | Deliverable                              |
+| ----- | ---------------------------------------- |
+| 0–4   | FastAPI setup + Whisper integration      |
+| 4–8   | LLM intent parser + Zenith API mock      |
+| 8–12  | State machine + PIN & confirmation logic |
+| 12–18 | React frontend (modal UI + TTS)          |
+| 18–22 | Edge case testing (13 flows)             |
+| 22–24 | Demo video + pitch deck prep             |
+
+---
+
+## 🎬 **Demo Scenarios**
+
+### Scenario 1 – Perfect Flow
+
+> User: “Send five thousand naira to John.”
+> EchoBank: “Sending ₦5,000 to John Okafor at Zenith Bank. Say your PIN.”
+> User: “1-2-3-4.”
+> EchoBank: “PIN verified. Say confirm.”
+> User: “Confirm.”
+> EchoBank: “✅ Transfer successful! New balance: ₦40,320.”
+
+### Scenario 2 – Add New Recipient
+
+> “I couldn’t find Funbi. Say ‘add new’ to add them.” → Account verify → PIN → Confirm → ✅ Done.
+
+### Scenario 3 – Error Recovery
+
+> “Send ₦100,000.” → Limit breach → Offer ₦20,000 → Wrong PIN → Retry → ✅ Success.
+
+---
+
+## 🧱 **Error Handling Matrix**
+
+| Scenario             | System Response  | Recovery                      |
+| -------------------- | ---------------- | ----------------------------- |
+| Recipient not found  | Offer to add new | Account verify flow           |
+| Multiple matches     | List options     | User chooses 1 / 2            |
+| Insufficient balance | Read balance     | Offer smaller amount          |
+| Limit exceeded       | State limit      | Offer max amount              |
+| Wrong PIN            | Warn & retry     | 3 tries → lock 30 min         |
+| Voice unclear        | Ask again        | After 3 failures → text input |
+| Network error        | Apology message  | Retry without deduction       |
+| Cancel mid-flow      | Confirm cancel   | No charge                     |
+| Start over           | Reset session    | Ready for new command         |
+| Small amount         | Confirm ₦50?     | Yes → continue / No → edit    |
+
+---
+
+## 🏁 **Success Criteria**
+
+**Technical**
+
+* All 13 edge cases handled gracefully
+* 0 crashes during demo
+* Latency < 3 seconds end-to-end
+* Voice accuracy > 90 %
+
+**Pitch**
+
+* Clear problem + impact
+* Live demo of Smart Stop/Continuation
+* Emotional hook (“Mama Aduke” story)
+* CBN financial inclusion alignment
+
+---
+
+## 🧩 **Winning Formula**
+
+1️⃣ Fully embedded (uses bank identity + APIs)
+2️⃣ Real edge-case coverage (13 flows)
+3️⃣ Inclusive voice UX (Nigerian English + TTS)
+4️⃣ Technical credibility (FastAPI + Whisper + LLM)
+5️⃣ Social impact + business viability
+
+---
+
+## ✅ **Sign-off**
+
+**Product Owner:** TIC Hackathon Team
+**Version:** 4.0 (Embedded Model)
+**Status:** Ready for build sprint
+**Next Steps:**
+1️⃣ Connect to Zenith API sandbox for transfer demo
+2️⃣ Implement voice PIN and interrupt flows
+3️⃣ QA on 13 edge cases
+4️⃣ Demo recording and pitch submission
+
+---
+
+This PRD now contains everything:
+
+* All edge cases
+* Embedded model with bank token and API integration
+* Smart Stop / Smart Continuation / Interrupt flows
+* Voice PIN security
+* End-to-end architecture for FastAPI + React + Whisper + LLM
+
+Would you like me to add a **sequence diagram** (from “tap mic” → Whisper → LLM → Zenith API → confirmation) as an appendix? It helps visualize the data flow in the presentation deck.
