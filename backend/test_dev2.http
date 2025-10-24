@@ -1,0 +1,227 @@
+### EchoBank Developer 2 - Transfers & Recipients API Tests
+### Make sure backend is running on http://localhost:8001
+
+### Test User Credentials:
+### Account: 0123456789
+### PIN: 1234
+### Balance: ₦100,000 (initially)
+
+###############################################################################
+### RECIPIENTS ENDPOINTS
+###############################################################################
+
+### 1. Get All Recipients for User
+GET http://localhost:8001/api/v1/recipients?account_number=0123456789
+
+###
+
+### 2. Get Single Recipient by ID
+GET http://localhost:8001/api/v1/recipients/1?account_number=0123456789
+
+###
+
+### 3. Get Favorite Recipients Only
+GET http://localhost:8001/api/v1/recipients?account_number=0123456789&favorites_only=true
+
+###
+
+### 4. Add New Recipient
+POST http://localhost:8001/api/v1/recipients
+Content-Type: application/json
+
+{
+  "account_number": "0123456789",
+  "recipient_name": "Sarah Bello",
+  "recipient_account": "0555555555",
+  "bank_name": "UBA",
+  "bank_code": "033",
+  "session_id": "test_add_recipient"
+}
+
+###
+
+### 5. Toggle Favorite Status
+PUT http://localhost:8001/api/v1/recipients/1/favorite
+Content-Type: application/json
+
+{
+  "account_number": "0123456789",
+  "is_favorite": false,
+  "session_id": "test_favorite"
+}
+
+###
+
+### 6. Delete Recipient
+DELETE http://localhost:8001/api/v1/recipients/4?account_number=0123456789&session_id=test_delete
+
+###
+
+###############################################################################
+### TRANSFER ENDPOINTS
+###############################################################################
+
+### 7. Initiate Transfer (₦5,000 to John Okafor)
+POST http://localhost:8001/api/v1/transfers/initiate
+Content-Type: application/json
+
+{
+  "sender_account": "0123456789",
+  "recipient_id": 1,
+  "amount": 5000,
+  "session_id": "test_transfer_001"
+}
+
+###
+
+### 8. Verify PIN for Transfer
+### (Replace {transfer_id} with actual transfer_id from step 7)
+POST http://localhost:8001/api/v1/transfers/{transfer_id}/verify-pin
+Content-Type: application/json
+
+{
+  "pin": "1234",
+  "session_id": "test_transfer_001"
+}
+
+###
+
+### 9. Confirm Transfer
+### (Replace {transfer_id} with actual transfer_id)
+POST http://localhost:8001/api/v1/transfers/{transfer_id}/confirm
+Content-Type: application/json
+
+{
+  "session_id": "test_transfer_001"
+}
+
+###
+
+### 10. Get Transfer Status
+### (Replace {transfer_id} with actual transfer_id)
+GET http://localhost:8001/api/v1/transfers/{transfer_id}
+
+###
+
+### 11. Cancel Transfer (Before Confirmation)
+### (Replace {transfer_id} with actual transfer_id)
+POST http://localhost:8001/api/v1/transfers/{transfer_id}/cancel
+Content-Type: application/json
+
+{
+  "session_id": "test_transfer_002"
+}
+
+###
+
+###############################################################################
+### COMPLETE TRANSFER FLOW EXAMPLE
+###############################################################################
+
+### Step 1: Initiate Transfer
+POST http://localhost:8001/api/v1/transfers/initiate
+Content-Type: application/json
+
+{
+  "sender_account": "0123456789",
+  "recipient_id": 1,
+  "amount": 10000,
+  "session_id": "complete_flow_test"
+}
+
+### After Step 1, copy the transfer_id from response
+
+###
+
+### Step 2: Verify PIN (Use transfer_id from Step 1)
+POST http://localhost:8001/api/v1/transfers/REPLACE_WITH_TRANSFER_ID/verify-pin
+Content-Type: application/json
+
+{
+  "pin": "1234",
+  "session_id": "complete_flow_test"
+}
+
+###
+
+### Step 3: Confirm Transfer (Use same transfer_id)
+POST http://localhost:8001/api/v1/transfers/REPLACE_WITH_TRANSFER_ID/confirm
+Content-Type: application/json
+
+{
+  "session_id": "complete_flow_test"
+}
+
+###
+
+###############################################################################
+### ERROR TEST CASES
+###############################################################################
+
+### 12. Test Invalid PIN
+POST http://localhost:8001/api/v1/transfers/initiate
+Content-Type: application/json
+
+{
+  "sender_account": "0123456789",
+  "recipient_id": 1,
+  "amount": 2000,
+  "session_id": "error_test_pin"
+}
+
+### Then verify with wrong PIN:
+# POST http://localhost:8001/api/v1/transfers/{transfer_id}/verify-pin
+# {
+#   "pin": "9999",
+#   "session_id": "error_test_pin"
+# }
+
+###
+
+### 13. Test Insufficient Balance
+POST http://localhost:8001/api/v1/transfers/initiate
+Content-Type: application/json
+
+{
+  "sender_account": "0123456789",
+  "recipient_id": 1,
+  "amount": 200000,
+  "session_id": "error_test_balance"
+}
+
+###
+
+### 14. Test Exceeding Daily Limit (₦50,000)
+POST http://localhost:8001/api/v1/transfers/initiate
+Content-Type: application/json
+
+{
+  "sender_account": "0123456789",
+  "recipient_id": 1,
+  "amount": 60000,
+  "session_id": "error_test_limit"
+}
+
+###
+
+### 15. Test Non-existent Account
+GET http://localhost:8001/api/v1/recipients?account_number=9999999999
+
+###
+
+###############################################################################
+### NOTES
+###############################################################################
+
+# Test Recipients Available:
+# 1. John Okafor - 0111111111 - Zenith Bank (057) - Favorite
+# 2. John Adeyemi - 0222222222 - GTBank (058)
+# 3. Mary Johnson - 0333333333 - Access Bank (044) - Favorite
+# 4. David Nwosu - 0444444444 - First Bank (011)
+
+# Transfer Flow:
+# 1. Initiate → Returns transfer_id, status: pending_pin
+# 2. Verify PIN → status: pending_confirmation
+# 3. Confirm → status: completed (money transferred)
+
+# You can Cancel at any time before confirmation

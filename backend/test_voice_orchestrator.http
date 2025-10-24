@@ -1,0 +1,338 @@
+### EchoBank Voice Orchestrator API Tests
+### New Integration Endpoint for Banks
+### Backend: http://localhost:8001
+
+### Test Account:
+### Account: 0123456789
+### PIN: 1234
+### Balance: ₦95,000 (after previous test transfer)
+
+###############################################################################
+### VOICE ORCHESTRATOR - Primary Integration Endpoint
+###############################################################################
+
+### 1. Test Check Balance (Text-based)
+POST http://localhost:8001/api/v1/voice/process-text
+Content-Type: application/json
+
+{
+  "text": "What's my balance?",
+  "account_number": "0123456789",
+  "session_id": "test_balance_001",
+  "token": "demo_token"
+}
+
+###
+
+### 2. Test Transfer Intent Recognition
+POST http://localhost:8001/api/v1/voice/process-text
+Content-Type: application/json
+
+{
+  "text": "Send five thousand naira to John",
+  "account_number": "0123456789",
+  "session_id": "test_transfer_001",
+  "token": "demo_token"
+}
+
+### Expected: Returns transfer details and asks for confirmation
+
+###
+
+### 3. Test Confirmation
+POST http://localhost:8001/api/v1/voice/process-text
+Content-Type: application/json
+
+{
+  "text": "Yes, confirm",
+  "account_number": "0123456789",
+  "session_id": "test_transfer_001",
+  "token": "demo_token"
+}
+
+### Expected: Asks for PIN
+
+###
+
+### 4. Test PIN Entry
+POST http://localhost:8001/api/v1/voice/process-text
+Content-Type: application/json
+
+{
+  "text": "1-2-3-4",
+  "account_number": "0123456789",
+  "session_id": "test_transfer_001",
+  "token": "demo_token"
+}
+
+### Expected: Transfer completes, returns new balance
+
+###
+
+### 5. Test Cancel Intent
+POST http://localhost:8001/api/v1/voice/process-text
+Content-Type: application/json
+
+{
+  "text": "Cancel this transfer",
+  "account_number": "0123456789",
+  "session_id": "test_cancel_001",
+  "token": "demo_token"
+}
+
+###
+
+### 6. Test Unknown Intent
+POST http://localhost:8001/api/v1/voice/process-text
+Content-Type: application/json
+
+{
+  "text": "What's the weather today?",
+  "account_number": "0123456789",
+  "session_id": "test_unknown_001",
+  "token": "demo_token"
+}
+
+###
+
+### 7. Test Transfer to Non-existent Recipient
+POST http://localhost:8001/api/v1/voice/process-text
+Content-Type: application/json
+
+{
+  "text": "Send two thousand naira to Sarah",
+  "account_number": "0123456789",
+  "session_id": "test_no_recipient_001",
+  "token": "demo_token"
+}
+
+### Expected: Asks to add recipient first
+
+###
+
+###############################################################################
+### COMPLETE TRANSFER FLOW - Voice Orchestrator
+###############################################################################
+
+### Step 1: Initiate Transfer
+POST http://localhost:8001/api/v1/voice/process-text
+Content-Type: application/json
+
+{
+  "text": "Send three thousand naira to John",
+  "account_number": "0123456789",
+  "session_id": "complete_flow_voice",
+  "token": "demo_token"
+}
+
+### Copy the session_id for next steps
+
+###
+
+### Step 2: Confirm Transfer
+POST http://localhost:8001/api/v1/voice/process-text
+Content-Type: application/json
+
+{
+  "text": "Yes, confirm the transfer",
+  "account_number": "0123456789",
+  "session_id": "complete_flow_voice",
+  "token": "demo_token"
+}
+
+###
+
+### Step 3: Enter PIN
+POST http://localhost:8001/api/v1/voice/process-text
+Content-Type: application/json
+
+{
+  "text": "1234",
+  "account_number": "0123456789",
+  "session_id": "complete_flow_voice",
+  "token": "demo_token"
+}
+
+### Transfer should complete successfully
+
+###
+
+###############################################################################
+### VOICE AUDIO PROCESSING (Requires Audio File)
+###############################################################################
+
+### 8. Process Voice Audio
+### Note: This endpoint accepts multipart/form-data with audio file
+### Use Postman or similar tool to test with actual audio
+
+# POST http://localhost:8001/api/v1/voice/process-audio
+# Headers:
+#   account_number: 0123456789
+#   session_id: test_audio_001
+#   token: demo_token
+# Body (multipart/form-data):
+#   audio: [audio file - .wav, .mp3, .m4a]
+
+###
+
+###############################################################################
+### SESSION MANAGEMENT
+###############################################################################
+
+### 9. Clear Session
+POST http://localhost:8001/api/v1/voice/session/clear?session_id=test_transfer_001
+
+###
+
+###############################################################################
+### ERROR CASES
+###############################################################################
+
+### 10. Test Invalid PIN
+POST http://localhost:8001/api/v1/voice/process-text
+Content-Type: application/json
+
+{
+  "text": "Send two thousand naira to Mary",
+  "account_number": "0123456789",
+  "session_id": "error_pin_001",
+  "token": "demo_token"
+}
+
+### Then confirm:
+POST http://localhost:8001/api/v1/voice/process-text
+Content-Type: application/json
+
+{
+  "text": "confirm",
+  "account_number": "0123456789",
+  "session_id": "error_pin_001",
+  "token": "demo_token"
+}
+
+### Then enter wrong PIN:
+POST http://localhost:8001/api/v1/voice/process-text
+Content-Type: application/json
+
+{
+  "text": "9999",
+  "account_number": "0123456789",
+  "session_id": "error_pin_001",
+  "token": "demo_token"
+}
+
+### Expected: "Invalid PIN" error
+
+###
+
+### 11. Test Insufficient Balance
+POST http://localhost:8001/api/v1/voice/process-text
+Content-Type: application/json
+
+{
+  "text": "Send two hundred thousand naira to John",
+  "account_number": "0123456789",
+  "session_id": "error_balance_001",
+  "token": "demo_token"
+}
+
+### Expected: Insufficient balance error
+
+###
+
+### 12. Test Daily Limit Exceeded
+POST http://localhost:8001/api/v1/voice/process-text
+Content-Type: application/json
+
+{
+  "text": "Send sixty thousand naira to John",
+  "account_number": "0123456789",
+  "session_id": "error_limit_001",
+  "token": "demo_token"
+}
+
+### Expected: Daily limit exceeded error (limit is ₦50,000)
+
+###
+
+###############################################################################
+### INTEGRATION EXAMPLES FOR BANKS
+###############################################################################
+
+### Bank Integration Flow:
+# 1. User taps "Voice Assistant" button in bank app
+# 2. Bank records audio using device microphone
+# 3. Bank sends audio to EchoBank /process-audio endpoint
+# 4. EchoBank returns:
+#    - Transcribed text
+#    - Recognized intent
+#    - Response text (what to say back)
+#    - Next action (confirm, enter_pin, complete)
+# 5. Bank app speaks response using TTS
+# 6. Bank app shows appropriate UI (confirmation modal, PIN input, etc.)
+# 7. User continues conversation or completes action
+
+### Example JavaScript Integration:
+/*
+const recordAudio = async () => {
+  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  const recorder = new MediaRecorder(stream);
+  const chunks = [];
+
+  recorder.ondataavailable = (e) => chunks.push(e.data);
+  recorder.onstop = async () => {
+    const blob = new Blob(chunks, { type: 'audio/wav' });
+    const formData = new FormData();
+    formData.append('audio', blob);
+
+    const response = await fetch('/api/v1/voice/process-audio', {
+      method: 'POST',
+      headers: {
+        'account_number': userAccount,
+        'session_id': sessionId,
+        'token': authToken
+      },
+      body: formData
+    });
+
+    const result = await response.json();
+
+    // Speak response back to user
+    speak(result.response_text);
+
+    // Handle next action
+    if (result.action === 'confirm_transfer') {
+      showTransferConfirmation(result.data);
+    } else if (result.action === 'request_pin') {
+      showPINInput();
+    }
+  };
+
+  recorder.start();
+  setTimeout(() => recorder.stop(), 5000); // Record for 5 seconds
+};
+*/
+
+###
+
+###############################################################################
+### NOTES
+###############################################################################
+
+# Key Features:
+# ✅ Single endpoint for complete voice flow
+# ✅ Handles transcription, intent recognition, and orchestration
+# ✅ Integrates with bank's existing APIs (via BankAPIClient)
+# ✅ Session management for multi-turn conversations
+# ✅ Returns what to say back to user (for TTS)
+# ✅ Supports both audio and text input
+
+# Architecture:
+# Bank App → EchoBank Voice API → Bank's Backend API
+
+# Security:
+# - Bank's auth tokens passed through EchoBank
+# - No customer data stored in EchoBank
+# - PINs verified through bank's API
+
+# See BANK_INTEGRATION_GUIDE.md for full integration documentation
