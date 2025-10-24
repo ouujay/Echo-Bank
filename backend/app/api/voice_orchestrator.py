@@ -12,12 +12,15 @@ Integration Flow:
 """
 
 from fastapi import APIRouter, UploadFile, File, HTTPException, Header
+from fastapi.responses import Response
 from pydantic import BaseModel
 from typing import Optional, Dict, Any
 from app.services.whisper import whisper_service
 from app.services.llm import llm_service
+from app.services.tts import tts_service
 from app.integrations.mock_bank import mock_bank_client
 from app.utils.session import session_store
+import base64
 
 router = APIRouter(prefix="/api/v1/voice", tags=["Voice Orchestration"])
 
@@ -28,6 +31,14 @@ class VoiceRequest(BaseModel):
     account_number: str
     session_id: Optional[str] = None
     token: Optional[str] = None  # Bank's auth token
+    include_audio: bool = False  # Include TTS audio in response
+
+
+class TTSRequest(BaseModel):
+    """Request for text-to-speech conversion"""
+    text: str
+    voice: Optional[str] = "nova"  # nova, alloy, echo, fable, onyx, shimmer
+    speed: Optional[float] = 1.0
 
 
 class VoiceResponse(BaseModel):
@@ -36,6 +47,7 @@ class VoiceResponse(BaseModel):
     session_id: str
     intent: str
     response_text: str  # What to say back to user
+    response_audio: Optional[str] = None  # Base64 encoded audio (if include_audio=True)
     action: Optional[str] = None  # next_action: confirm_transfer, input_pin, etc
     data: Optional[Dict[str, Any]] = None  # Additional context
     error: Optional[str] = None
@@ -132,45 +144,55 @@ async def process_voice_text(request: VoiceRequest):
         session_data["last_intent"] = intent
         session_data["entities"] = entities
 
-        # Step 2: Execute based on intent
-        if intent == "transfer":
-            return await handle_transfer_intent(
+        # Step 2: Check for global interrupts first
+        if intent == "cancel":
+            response = await handle_cancel_intent(request, session_data, session_id)
+        elif intent == "start_over" or request.text.lower() in ["start over", "restart", "begin again"]:
+            response = await handle_start_over_intent(request, session_data, session_id)
+
+        # Step 3: Execute based on intent
+        elif intent == "transfer":
+            response = await handle_transfer_intent(
                 request, session_data, entities, session_id
             )
 
         elif intent == "check_balance":
-            return await handle_balance_intent(
+            response = await handle_balance_intent(
                 request, session_data, session_id
             )
 
         elif intent == "add_recipient":
-            return await handle_add_recipient_intent(
+            response = await handle_add_recipient_intent(
                 request, session_data, entities, session_id
             )
 
         elif intent == "confirm":
-            return await handle_confirm_intent(
-                request, session_data, session_id
-            )
-
-        elif intent == "cancel":
-            return await handle_cancel_intent(
+            response = await handle_confirm_intent(
                 request, session_data, session_id
             )
 
         elif intent == "provide_pin":
-            return await handle_pin_intent(
+            response = await handle_pin_intent(
                 request, session_data, entities, session_id
             )
 
         else:
-            return VoiceResponse(
+            response = VoiceResponse(
                 success=True,
                 session_id=session_id,
                 intent="unknown",
                 response_text="I didn't quite understand that. You can say things like 'check my balance' or 'send money to John'.",
                 action="clarify"
             )
+
+        # Step 4: Add audio to response if requested
+        session_data["last_response_text"] = response.response_text
+        session_store.set(session_id, session_data)
+
+        if request.include_audio:
+            response = await add_audio_to_response(response, True)
+
+        return response
 
     except Exception as e:
         return VoiceResponse(
@@ -427,6 +449,44 @@ async def handle_cancel_intent(
     )
 
 
+async def handle_start_over_intent(
+    request: VoiceRequest,
+    session_data: Dict,
+    session_id: str
+) -> VoiceResponse:
+    """Handle start over / restart"""
+
+    pending_transfer = session_data.get("pending_transfer")
+
+    if pending_transfer:
+        # Cancel any pending transfer
+        await mock_bank_client.cancel_transfer(
+            transfer_id=pending_transfer["transfer_id"],
+            token=request.token or "demo_token"
+        )
+
+    # Clear session but keep session_id
+    session_store.delete(session_id)
+
+    # Get balance for context
+    balance_result = await mock_bank_client.get_balance(
+        request.account_number,
+        request.token or "demo_token"
+    )
+
+    balance_text = ""
+    if balance_result["success"]:
+        balance_text = f" Your balance is {balance_result['balance']:,.2f} naira."
+
+    return VoiceResponse(
+        success=True,
+        session_id=session_id,
+        intent="start_over",
+        response_text=f"Okay, let's start over.{balance_text} What would you like to do? You can check your balance, send money, or manage recipients.",
+        action="welcome"
+    )
+
+
 async def handle_add_recipient_intent(
     request: VoiceRequest,
     session_data: Dict,
@@ -452,3 +512,106 @@ async def clear_session(session_id: str):
     """Clear voice session"""
     session_store.delete(session_id)
     return {"success": True, "message": "Session cleared"}
+
+
+@router.post("/tts")
+async def text_to_speech(request: TTSRequest):
+    """
+    Convert text to speech audio
+
+    Returns base64 encoded MP3 audio that can be played in the browser/app.
+
+    Example usage:
+        ```javascript
+        const response = await fetch('/api/v1/voice/tts', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                text: "Your balance is 95,000 naira",
+                voice: "nova",
+                speed: 1.0
+            })
+        });
+
+        const {audio_base64} = await response.json();
+
+        // Play audio
+        const audio = new Audio(`data:audio/mp3;base64,${audio_base64}`);
+        audio.play();
+        ```
+    """
+    result = await tts_service.text_to_speech(
+        text=request.text,
+        voice=request.voice,
+        speed=request.speed,
+        return_format="base64"
+    )
+
+    return result
+
+
+@router.get("/tts/audio/{session_id}")
+async def get_tts_audio(session_id: str):
+    """
+    Get TTS audio for last response in session
+
+    Returns MP3 audio file directly (not base64).
+    Useful for direct playback in audio players.
+    """
+    session_data = session_store.get(session_id)
+
+    if not session_data or "last_response_text" not in session_data:
+        raise HTTPException(status_code=404, detail="No response audio found for session")
+
+    result = await tts_service.text_to_speech(
+        text=session_data["last_response_text"],
+        voice="nova",
+        speed=1.0,
+        return_format="base64"
+    )
+
+    if not result["success"]:
+        raise HTTPException(status_code=500, detail=result["error"])
+
+    # Decode base64 to binary
+    audio_bytes = base64.b64decode(result["audio_base64"])
+
+    return Response(
+        content=audio_bytes,
+        media_type="audio/mpeg",
+        headers={
+            "Content-Disposition": f"inline; filename=response_{session_id}.mp3"
+        }
+    )
+
+
+async def add_audio_to_response(response: VoiceResponse, include_audio: bool) -> VoiceResponse:
+    """
+    Helper function to add TTS audio to voice response
+
+    Args:
+        response: VoiceResponse object
+        include_audio: Whether to generate and include audio
+
+    Returns:
+        VoiceResponse with audio_base64 field populated if include_audio=True
+    """
+    if not include_audio or not response.response_text:
+        return response
+
+    try:
+        tts_result = await tts_service.text_to_speech(
+            text=response.response_text,
+            voice="nova",
+            speed=1.0,
+            return_format="base64"
+        )
+
+        if tts_result["success"]:
+            response.response_audio = tts_result["audio_base64"]
+
+    except Exception as e:
+        # Don't fail the whole request if TTS fails
+        print(f"TTS generation failed: {e}")
+
+    return response
