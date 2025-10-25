@@ -142,7 +142,7 @@ NEXT_STEP values:
 
         try:
             response = self.client.chat.completions.create(
-                model="mistralai/Mixtral-8x7B-Instruct-v0.1",
+                model="meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo",
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_prompt}
