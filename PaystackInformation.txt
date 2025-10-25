@@ -1,0 +1,280 @@
+Love this. We're going to build a mini PRD just for Paystack so you (and the team) know exactly what to call, what headers to send, and where it fits in EchoBank.
+
+I'm treating this as: "we are building our fake bank layer, and that bank layer will use Paystack under the hood to do verification / collect money." So this PRD focuses on the Paystack pieces that matter to you.
+
+All factual Paystack details below come from the official Paystack docs as of October 25, 2025. ([Paystack][1])
+
+---
+
+PAYSTACK INTEGRATION PRD (FOR ECHOBANK TEST ENV)
+Version 1.0
+Date: Oct 25, 2025
+------------------
+
+1. Goals
+
+We are using Paystack for 2 main things:
+
+1. Accept/collect money from a user (customer paying).
+
+   * We create a transaction.
+   * User completes payment on Paystack Checkout.
+   * We verify that the payment succeeded.
+
+2. Verify and move money in our “fake bank” demo.
+
+   * We can use Paystack’s account verification to confirm an account name matches an account number before “sending.”
+   * (Optional / stretch) Use Paystack transfer rails to simulate “send money.”
+
+In our demo, this is how it flows:
+
+* EchoBank (voice assistant) talks to our Fake Bank API.
+* Fake Bank API talks to Paystack.
+* We do NOT call Paystack directly from the React frontend. Only backend-to-Paystack with secret keys.
+
+2. Authentication / Headers
+
+All Paystack API calls require:
+
+* `Authorization: Bearer YOUR_SECRET_KEY`
+* `Content-Type: application/json`
+
+So every request we send to Paystack from our backend must include:
+
+* Secret key from our Paystack dashboard (test mode for hackathon)
+* JSON body
+* HTTPS only
+
+This applies to all endpoints below. ([Paystack][2])
+
+3. Core Payment Flow: Accepting Money
+
+This is Paystack's basic “accept payment” flow. It's 3 steps.
+
+Step 1. Initialize Transaction
+Endpoint: `POST https://api.paystack.co/transaction/initialize`
+Purpose: Start a new payment. Paystack gives us an `authorization_url`. We send the user there (or open popup) so they can actually pay.
+
+Required body fields:
+
+* `email`: customer email
+* `amount`: amount in subunits of the currency (for NGN, kobo).
+  So ₦5,000 becomes `"500000"` (because 5000 * 100)
+
+Optional body fields:
+
+* `channels`: restrict which payment methods appear, e.g. `["card","bank","ussd","qr","mobile_money","bank_transfer","apple_pay","eft","payattitude"]`. ([Paystack][3])
+* `currency`: default is integration currency (e.g. "NGN")
+* `reference`: unique transaction reference if we want to control it
+* `callback_url`: where Paystack redirects after payment
+* many more: `plan`, `metadata`, `split_code`, etc. ([Paystack][3])
+
+Response (success):
+
+* `status: true`
+* `message: "Authorization URL created"`
+* `data.authorization_url`: this is the URL where user completes the payment
+* `data.access_code`
+* `data.reference`: unique reference for this transaction ([Paystack][1])
+
+How we use it in demo:
+
+* Our Fake Bank API can call this to simulate “collecting” money from the user (for example, funding wallet or paying bill).
+* We can open `authorization_url` in a webview / popup if we actually want to demo the payment screen.
+
+Step 2. User Pays
+This happens in Paystack’s UI (their checkout page / popup). We don't build this part. We just let them finish.
+
+Step 3. Verify Transaction
+After the user pays, we must confirm the status of that payment.
+Paystack has a “Verify Transaction” endpoint (this is in the Transaction API docs). The docs say that after payment, you should call verify to confirm final status of that reference. Typical: `GET /transaction/verify/:reference`.
+Why we care: we must not “mark as paid” until we verify.
+
+Why this matters to EchoBank:
+For a “pay bills” or “top up wallet” use case, we can demo:
+
+* EchoBank: “Do you want to pay ₦3,000 for PHCN now?”
+* User: “Yes confirm.”
+* Our Fake Bank API: initialize transaction with Paystack, pull back authorization_url
+* Frontend: opens Paystack checkout in a webview
+* After completing, Fake Bank API calls verify to confirm it succeeded
+
+4. Account Verification (Name Lookup)
+
+This is critical for “Send money to Funbi” when Funbi is NEW and not in saved beneficiaries.
+
+Flow we want:
+
+1. User says the account number + bank.
+2. We hit a verification/resolve endpoint (either via Paystack or bank rails).
+3. We get the real account name back.
+4. We read it back to the user:
+   “Found: Funbi Adeyemi at GTBank. Save this contact as ‘Funbi’? Yes or no.”
+
+Paystack exposes “account verification / resolve account number” so that given `bank_code` and `account_number`, we can retrieve the registered account name. This is standard in Nigerian fintech flows and is explicitly supported in Paystack docs as part of recipient verification. Paystack also describes a Verify Account / Resolve Account Number flow in their API reference (Resolve Account Number, Validate Account). ([Paystack][2])
+
+What we need to store after verification:
+
+* `full_name`
+* `account_number`
+* `bank_code` / `bank_name`
+* timestamp
+* optional: mark `isNew: true` so we know we just added it in this session
+
+That supports our PRD “Add new contact” edge case:
+
+* System: “I couldn't find Funbi. Would you like to add Funbi as a new contact?”
+* User: “Yes.”
+* System: “What is the account number?”
+* After we get that, we do the Paystack-style verification call.
+* If result comes back clean:
+
+  * We say the confirmed name.
+  * We offer to save to contacts in our Fake Bank API.
+* If verification fails:
+
+  * We tell user: “I couldn’t verify that account. Please repeat the account number slowly.”
+
+5. Transfer Simulation / Sending Money
+
+Paystack also supports sending money out (“Make a transfer”), which normally involves:
+
+* creating a transfer recipient,
+* initiating a transfer,
+* and providing a reference.
+
+In our hackathon, we don't fully need to implement real bank payouts via Paystack rails, but we can do a light version to make the demo look legit:
+
+Demo plan:
+
+* When EchoBank gets “Confirm,” our Fake Bank API will:
+
+  * check PIN
+  * check balance
+  * (optional) hit Paystack transfer initiation OR just simulate success
+  * return:
+
+    * `success: true`
+    * `reference`: "ECHO457123"
+    * `new_balance`: (old_balance - amount)
+
+Then EchoBank speaks:
+“✅ Transfer successful! You sent ₦5,000 to John Okafor. Your new balance is ₦40,320. Reference: ECHO457123.”
+
+That aligns with what we already defined in your voice flows in the PRD.
+
+6. Limits, Balance, Velocity
+
+We still enforce banking rules in our Fake Bank API layer, not via Paystack:
+
+* Per transaction limit (₦20,000)
+* Daily limit (₦50,000)
+* Velocity limit (no more than 5 transfers/hour)
+* Insufficient balance soft recovery
+
+These limits aren't Paystack’s problem. Those are “bank policy.” Those rules will live inside App B (Fake Bank API). EchoBank will consume them. Then EchoBank will talk back to the user:
+
+Example:
+“The amount exceeds your single transaction limit of ₦20,000. You can send up to ₦20,000 right now. Would you like to send ₦20,000 instead? Say yes or no.”
+
+That messaging is straight from your PRD and must remain exactly like that.
+
+7. Summary of Paystack Endpoints We Care About
+
+Here’s the shortlist you actually need:
+
+A. Initialize Transaction
+Use when you want to start accepting a payment (like bill pay / funding).
+
+* Method: `POST`
+* URL: `https://api.paystack.co/transaction/initialize`
+* Headers:
+
+  * `Authorization: Bearer SECRET_KEY`
+  * `Content-Type: application/json`
+* Body main fields:
+
+  * `email` (customer email)
+  * `amount` (in kobo, e.g. "500000" for ₦5,000)
+  * optional `channels`, `reference`, `callback_url`, etc.
+* Response:
+
+  * `authorization_url` (redirect user to pay)
+  * `access_code`
+  * `reference`  ([Paystack][1])
+
+B. Verify Transaction
+Use after payment completes to confirm status is successful.
+
+* Method: `GET`
+* URL pattern: `https://api.paystack.co/transaction/verify/{reference}`
+* Headers:
+
+  * `Authorization: Bearer SECRET_KEY`
+* Response: includes final status of the transaction (success, failed, abandoned).
+  Why we need it: So we can confidently say “Payment successful” or not.
+
+C. Resolve / Verify Account Info
+Use to confirm that account_number + bank_code belongs to the person name user said.
+
+* Input: account number, bank code
+* Output: official account name from bank rails
+  Why we need it: To speak back “Found: Funbi Adeyemi at GTBank” before saving a new recipient.
+  Paystack documents account validation / resolve account number as part of its verification capabilities. ([Paystack][2])
+
+D. (Optional) Transfer initiation
+You can simulate “send money from bank to recipient” using Paystack transfer APIs in a real production integration. For hackathon, you can mock this step in Fake Bank API and just generate:
+
+* `reference`
+* `new_balance`
+* status: `"success"`
+
+8. How This Fits EchoBank
+
+Here’s how you wire it into your story:
+
+Your “Fake Bank API” (the one Dev 3 is building) will:
+
+* Store mock balance, saved recipients, daily limits (this represents Zenith in your story).
+* Expose endpoints like `/beneficiaries/list`, `/balance`, `/transfer/send`.
+
+Under the hood, that Fake Bank API will:
+
+* use Paystack’s resolve/verify to confirm new recipient account details (that’s how we speak back their real name),
+* use Paystack `transaction/initialize` and `transaction/verify` for the “collect money” type flows (like bill payment, airtime, wallet top-up),
+* optionally simulate sending out money.
+
+EchoBank (the voice assistant app) will never talk to Paystack directly. It will always talk to Fake Bank API. Fake Bank API is what talks to Paystack. That matches exactly how a real bank would integrate us in production: we talk to the bank, and the bank talks to rails.
+
+9. Action Items for you / dev team
+
+* You must have:
+
+  * Paystack Secret Key (test)
+  * A dev “customer email” you will use in initialize requests
+  * A couple of test accounts + bank codes for the resolve step
+
+* You must implement in Fake Bank API:
+
+  * `/beneficiaries/verify` that calls Paystack to resolve account number and returns the official account name
+  * `/payment/initialize` that calls Paystack `transaction/initialize` and returns the `authorization_url`
+  * `/payment/verify` that calls Paystack verify and returns final status so EchoBank can speak “done”
+
+* EchoBank voice logic must:
+
+  * Announce account names using the verified data
+  * Announce final payment result only after verification
+  * Never assume success without verification
+
+10. Judge pitch angle
+
+When you present:
+“We’re already integrated with Paystack rails. We can verify account names in real time, generate real payment sessions, and confirm final payment status. A bank like Zenith just has to wire their auth token and their environment into our Fake Bank API layer. We’re already production-shaped.”
+
+This is extremely convincing.
+
+If you want, I can now draft the Fake Bank API contract for your team (the exact endpoints, request fields, and response fields Dev 3 should build so Dev 2 can call it clean).
+
+[1]: https://paystack.com/docs/payments/accept-payments/?utm_source=chatgpt.com "Accept Payments | Paystack Developer Documentation"
+[2]: https://paystack.com/docs/api/?utm_source=chatgpt.com "API Reference | Paystack Developer Documentation"
+[3]: https://paystack.com/docs/api/transaction/?utm_source=chatgpt.com "Transaction API | Paystack Developer Documentation"

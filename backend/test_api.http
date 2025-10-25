@@ -1,0 +1,109 @@
+### Demo Bank API Test Requests
+### Use REST Client extension in VS Code or similar tool
+
+@baseUrl = http://localhost:8000/api
+@token =
+
+### Health Check
+GET http://localhost:8000/health
+
+### 1. Register New User
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "email": "test@demobank.com",
+  "phone": "+2348123456789",
+  "full_name": "Test User",
+  "password": "password123",
+  "pin": "1234",
+  "bvn": "12345678901"
+}
+
+### 2. Login Existing User (John Doe)
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "john@demo.com",
+  "password": "password123"
+}
+
+### 3. Verify PIN
+POST {{baseUrl}}/auth/verify-pin
+Content-Type: application/json
+
+{
+  "account_number": "0123456789",
+  "pin": "1234"
+}
+
+### 4. Get User Accounts (requires token)
+GET {{baseUrl}}/accounts
+Authorization: Bearer {{token}}
+
+### 5. Get Account Balance by Number
+GET {{baseUrl}}/accounts/balance/0123456789
+
+### 6. Get Account Balance by ID
+GET {{baseUrl}}/accounts/1/balance
+Authorization: Bearer {{token}}
+
+### 7. Get Transaction History
+GET {{baseUrl}}/accounts/1/transactions?page=1&page_size=10
+Authorization: Bearer {{token}}
+
+### 8. Get Recipients
+GET {{baseUrl}}/recipients
+Authorization: Bearer {{token}}
+
+### 9. Add New Recipient
+POST {{baseUrl}}/recipients
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "recipient_name": "Test Recipient",
+  "account_number": "0999888777",
+  "bank_name": "Access Bank",
+  "bank_code": "044",
+  "is_favorite": false
+}
+
+### 10. Initiate Transfer
+POST {{baseUrl}}/transfers/initiate
+Content-Type: application/json
+
+{
+  "account_number": "0123456789",
+  "recipient_account": "0987654321",
+  "recipient_name": "Sarah Bello",
+  "recipient_bank_code": "999",
+  "recipient_bank_name": "Demo Bank",
+  "amount": 5000.00,
+  "narration": "Test transfer",
+  "initiated_via": "app"
+}
+
+### 11. Verify Transfer PIN
+POST {{baseUrl}}/transfers/1/verify-pin
+Content-Type: application/json
+
+{
+  "transaction_id": 1,
+  "pin": "1234"
+}
+
+### 12. Confirm Transfer
+POST {{baseUrl}}/transfers/1/confirm
+Content-Type: application/json
+
+{
+  "transaction_id": 1
+}
+
+### 13. Get Transfer Status
+GET {{baseUrl}}/transfers/1
+
+### 14. Cancel Transfer
+POST {{baseUrl}}/transfers/2/cancel
