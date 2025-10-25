@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-dom'
 import './App.css'
 import './VoiceModalPremium.css'
@@ -23,6 +23,17 @@ function LandingPage() {
   const audioChunksRef = useRef([])
   const audioRef = useRef(null)
   const recordingDelayTimeoutRef = useRef(null)
+  const conversationEndRef = useRef(null)
+
+  // Auto-scroll to latest message when conversation updates
+  useEffect(() => {
+    if (conversationEndRef.current) {
+      conversationEndRef.current.scrollIntoView({
+        behavior: 'smooth',
+        block: 'end'
+      })
+    }
+  }, [conversation])
 
   // Start voice recording
   const startRecording = async () => {
@@ -547,6 +558,8 @@ const result = await response.json();
                       </div>
                     </div>
                   ))}
+                  {/* Auto-scroll target */}
+                  <div ref={conversationEndRef} />
                 </div>
               ) : (
                 <div className="empty-state">
