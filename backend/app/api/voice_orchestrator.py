@@ -164,6 +164,45 @@ async def process_voice_text(request: VoiceRequest, db: Session = Depends(get_db
         session_id = request.session_id or f"session_{request.account_number}"
         session_data = session_store.get(session_id) or {}
 
+        # Check if we're awaiting transfer details (recipient name or amount)
+        if session_data.get("awaiting_transfer_details"):
+            print(f"[TRANSFER] Awaiting transfer details, user said: {request.text}")
+
+            # Extract entities from user's response
+            entities = {}
+            text_lower = request.text.lower()
+            words = request.text.split()
+
+            # Try to extract amount (numbers)
+            for word in words:
+                clean_word = word.replace(',', '').replace('.', '').strip()
+                if clean_word.isdigit():
+                    entities["amount"] = float(clean_word)
+                    break
+
+            # Try to extract recipient name (capitalize words that aren't common words)
+            common_words = {'to', 'send', 'transfer', 'pay', 'give', 'naira', 'the', 'a', 'an'}
+            potential_names = [word for word in words if word.lower() not in common_words and not word.replace(',', '').isdigit()]
+            if potential_names:
+                entities["recipient"] = ' '.join(potential_names)
+
+            # Get pending data from session
+            if session_data.get("pending_amount") and not entities.get("amount"):
+                entities["amount"] = session_data["pending_amount"]
+            if session_data.get("pending_recipient_name") and not entities.get("recipient"):
+                entities["recipient"] = session_data["pending_recipient_name"]
+
+            print(f"[TRANSFER] Extracted entities: {entities}")
+
+            # Clear awaiting state
+            session_data.pop("awaiting_transfer_details", None)
+            session_data.pop("transfer_state", None)
+            session_data.pop("pending_amount", None)
+            session_data.pop("pending_recipient_name", None)
+
+            # Process as transfer
+            return await handle_transfer_intent(request, session_data, entities, session_id, api_client)
+
         # Check if we're in recipient disambiguation mode
         if session_data.get("pending_recipients"):
             pending_recipients = session_data["pending_recipients"]
@@ -405,7 +444,10 @@ async def handle_transfer_intent(
     recipient_name = entities.get("recipient")
     amount = entities.get("amount")
 
-    if not recipient_name or not amount:
+    if not recipient_name and not amount:
+        # Neither provided - ask for both
+        session_data["awaiting_transfer_details"] = True
+        session_data["transfer_state"] = "awaiting_recipient_and_amount"
         session_store.set(session_id, session_data)
         return VoiceResponse(
             success=True,
@@ -413,6 +455,34 @@ async def handle_transfer_intent(
             intent="transfer",
             response_text="I can help you with that transfer. Who would you like to send money to and how much?",
             action="clarify_transfer"
+        )
+
+    elif not recipient_name:
+        # Have amount, need recipient
+        session_data["awaiting_transfer_details"] = True
+        session_data["transfer_state"] = "awaiting_recipient"
+        session_data["pending_amount"] = amount
+        session_store.set(session_id, session_data)
+        return VoiceResponse(
+            success=True,
+            session_id=session_id,
+            intent="transfer",
+            response_text=f"I'll help you send {amount} naira. Who would you like to send it to?",
+            action="clarify_recipient"
+        )
+
+    elif not amount:
+        # Have recipient, need amount
+        session_data["awaiting_transfer_details"] = True
+        session_data["transfer_state"] = "awaiting_amount"
+        session_data["pending_recipient_name"] = recipient_name
+        session_store.set(session_id, session_data)
+        return VoiceResponse(
+            success=True,
+            session_id=session_id,
+            intent="transfer",
+            response_text=f"How much would you like to send to {recipient_name}?",
+            action="clarify_amount"
         )
 
     # Get recipients from bank's API using their configured endpoint
