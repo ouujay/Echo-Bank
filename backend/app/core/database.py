@@ -8,8 +8,14 @@ from typing import Generator
 from app.core.config import settings
 
 # Create SQLAlchemy engine
+# SQLite needs special handling for threading
+connect_args = {}
+if settings.DATABASE_URL.startswith("sqlite"):
+    connect_args = {"check_same_thread": False}
+
 engine = create_engine(
-    settings.database_url_sync,
+    settings.DATABASE_URL,
+    connect_args=connect_args,
     pool_pre_ping=True,
     echo=settings.DEBUG
 )

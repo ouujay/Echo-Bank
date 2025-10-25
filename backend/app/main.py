@@ -29,9 +29,9 @@ app.add_middleware(
 def startup_event():
     """Create database tables on startup"""
     Base.metadata.create_all(bind=engine)
-    print("✅ Database tables created successfully!")
-    print(f"🚀 {settings.APP_NAME} v{settings.APP_VERSION} started!")
-    print(f"📝 API Documentation: http://localhost:{settings.PORT}/docs")
+    print("[OK] Database tables created successfully!")
+    print(f"[START] {settings.APP_NAME} v{settings.APP_VERSION} started!")
+    print(f"[DOCS] API Documentation: http://localhost:{settings.PORT}/docs")
 
 
 # Include routers

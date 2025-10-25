@@ -1,8 +1,7 @@
 """
 Paystack Transfer and Daily Limit Models
 """
-from sqlalchemy import Column, Integer, String, DateTime, Numeric, ForeignKey, Boolean, Date, Text, func
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import Column, Integer, String, DateTime, Numeric, ForeignKey, Boolean, Date, Text, func, JSON
 from sqlalchemy.orm import relationship
 from app.core.database import Base
 
@@ -23,7 +22,7 @@ class PaystackTransfer(Base):
     reason = Column(Text, nullable=True)
 
     # Paystack response data
-    paystack_response = Column(JSONB, nullable=True)
+    paystack_response = Column(JSON, nullable=True)
 
     # Webhook tracking
     webhook_received = Column(Boolean, default=False)

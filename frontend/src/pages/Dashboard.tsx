@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { accountsAPI } from '../services/api';
+import VoiceModal from '../components/VoiceModal';
+import '../components/VoiceModal.css';
 
 interface Account {
   id: number;
@@ -29,6 +31,7 @@ const Dashboard = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [showVoiceModal, setShowVoiceModal] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -179,6 +182,53 @@ const Dashboard = () => {
           )}
         </div>
       </div>
+
+      {/* Voice Banking Button */}
+      <button
+        onClick={() => setShowVoiceModal(true)}
+        style={{
+          position: 'fixed',
+          bottom: '24px',
+          right: '24px',
+          width: '64px',
+          height: '64px',
+          borderRadius: '50%',
+          background: 'linear-gradient(135deg, #0066FF, #0052CC)',
+          color: 'white',
+          border: 'none',
+          cursor: 'pointer',
+          boxShadow: '0 8px 20px rgba(0, 102, 255, 0.3)',
+          zIndex: 1000,
+          transition: 'transform 0.2s, box-shadow 0.2s',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+        onMouseOver={(e) => {
+          e.currentTarget.style.transform = 'scale(1.1)';
+          e.currentTarget.style.boxShadow = '0 12px 30px rgba(0, 102, 255, 0.4)';
+        }}
+        onMouseOut={(e) => {
+          e.currentTarget.style.transform = 'scale(1)';
+          e.currentTarget.style.boxShadow = '0 8px 20px rgba(0, 102, 255, 0.3)';
+        }}
+      >
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+          <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+          <line x1="12" y1="19" x2="12" y2="23" />
+          <line x1="8" y1="23" x2="16" y2="23" />
+        </svg>
+      </button>
+
+      {/* Voice Modal */}
+      {showVoiceModal && account && user && (
+        <VoiceModal
+          accountNumber={account.account_number}
+          userToken={localStorage.getItem('token') || ''}
+          onClose={() => setShowVoiceModal(false)}
+        />
+      )}
     </div>
   );
 };

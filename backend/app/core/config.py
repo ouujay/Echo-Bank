@@ -37,7 +37,7 @@ class Settings(BaseSettings):
     PAYSTACK_BASE_URL: str = "https://api.paystack.co"
 
     # CORS
-    ALLOWED_ORIGINS: str = "http://localhost:3000,http://localhost:8081"
+    ALLOWED_ORIGINS: str = "http://localhost:3000,http://localhost:3001,http://localhost:5173,http://localhost:5174,http://localhost:8081,http://localhost:8000"
 
     # API
     API_V1_PREFIX: str = "/api"
@@ -61,6 +61,7 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         case_sensitive = True
+        extra = "ignore"
 
 
 settings = Settings()
