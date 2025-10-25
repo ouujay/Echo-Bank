@@ -5,12 +5,19 @@ Converts text responses to audio for voice banking.
 Uses pyttsx3 for offline text-to-speech (no API calls needed!)
 """
 
-import pyttsx3
 import io
 import base64
 from typing import Optional
 import tempfile
 import wave
+
+# Try to import pyttsx3, but don't fail if it's not available
+try:
+    import pyttsx3
+    PYTTSX3_AVAILABLE = True
+except ImportError:
+    PYTTSX3_AVAILABLE = False
+    print("[TTS WARNING] pyttsx3 not available. TTS will be disabled. Install espeak-ng for TTS support.")
 
 
 class TTSService:
@@ -24,6 +31,11 @@ class TTSService:
         self.rate = 150
         self.volume = 1.0
         self.preferred_voice_id = None
+        self.available = PYTTSX3_AVAILABLE
+
+        if not PYTTSX3_AVAILABLE:
+            print("[TTS] TTS service initialized in DISABLED mode (pyttsx3 not available)")
+            return
 
         # Try to find a female voice ID on first init
         try:
@@ -35,8 +47,10 @@ class TTSService:
                     break
             temp_engine.stop()
             del temp_engine
-        except:
-            pass
+            print("[TTS] TTS service initialized successfully")
+        except Exception as e:
+            print(f"[TTS WARNING] Failed to initialize pyttsx3: {e}. TTS will be disabled.")
+            self.available = False
 
     async def text_to_speech(
         self,
@@ -64,6 +78,17 @@ class TTSService:
                 "error": Optional[str]
             }
         """
+
+        # If TTS is not available, return error but don't crash
+        if not self.available:
+            return {
+                "success": False,
+                "audio_base64": None if return_format == "base64" else None,
+                "audio_path": None if return_format == "file_path" else None,
+                "text": text,
+                "duration_estimate": 0,
+                "error": "TTS not available on this server (pyttsx3 requires espeak-ng)"
+            }
 
         try:
             # Create a FRESH engine for this request to avoid blocking
