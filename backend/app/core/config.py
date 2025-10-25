@@ -53,15 +53,15 @@ class Settings(BaseSettings):
     EMAIL_SENDER: str
     EMAIL_PASSWORD: str
 
-    # Paystack Configuration
-    PAYSTACK_SECRET_KEY: str
-    PAYSTACK_PUBLIC_KEY: str
-    PAYSTACK_CALLBACK_URL: str
+    # Paystack Configuration (Optional)
+    PAYSTACK_SECRET_KEY: str | None = None
+    PAYSTACK_PUBLIC_KEY: str | None = None
+    PAYSTACK_CALLBACK_URL: str | None = None
 
-    # Cloudinary Configuration
-    CLOUDINARY_CLOUD_NAME: str
-    CLOUDINARY_API_KEY: str
-    CLOUDINARY_API_SECRET: str
+    # Cloudinary Configuration (Optional)
+    CLOUDINARY_CLOUD_NAME: str | None = None
+    CLOUDINARY_API_KEY: str | None = None
+    CLOUDINARY_API_SECRET: str | None = None
 
     # AWS Bedrock (Optional - multiple keys available)
     BEDROCK_API_KEY_1: str | None = None
