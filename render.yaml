@@ -13,9 +13,7 @@ services:
       - key: PYTHON_VERSION
         value: 3.11.0
       - key: DATABASE_URL
-        fromDatabase:
-          name: echobank-db
-          property: connectionString
+        value: sqlite:///./echobank.db
       - key: JWT_SECRET_KEY
         generateValue: true
       - key: ENCRYPTION_KEY
@@ -44,11 +42,3 @@ services:
         value: "*"
       - key: ENVIRONMENT
         value: production
-
-databases:
-  - name: echobank-db
-    databaseName: echobank
-    user: echobank
-    region: oregon
-    plan: free
-    ipAllowList: []
