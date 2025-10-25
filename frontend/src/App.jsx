@@ -7,7 +7,7 @@ import CompanyLogin from './pages/CompanyLogin'
 import ConfigureEndpoints from './pages/ConfigureEndpoints'
 
 function LandingPage() {
-  const ECHOBANK_API = 'http://localhost:8000/api/v1'
+  const ECHOBANK_API = `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/v1`
   const DEMO_ACCOUNT = '6523711418'  // Demo Bank account (John Doe)
 
   const [showVoiceDemo, setShowVoiceDemo] = useState(false)
