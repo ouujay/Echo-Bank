@@ -2,38 +2,56 @@
 Text-to-Speech Service
 
 Converts text responses to audio for voice banking.
-Uses OpenAI TTS API for natural-sounding Nigerian English.
+Uses pyttsx3 for offline text-to-speech (no API calls needed!)
 """
 
-from openai import OpenAI
-from app.core.config import settings
+import pyttsx3
+import io
+import base64
 from typing import Optional
 import tempfile
-import base64
+import wave
 
 
 class TTSService:
     """
-    Text-to-Speech service for voice responses
+    Text-to-Speech service for voice responses using pyttsx3 (offline)
     """
 
     def __init__(self):
-        self.client = OpenAI(api_key=settings.WHISPERAPI)
+        # Store voice preferences but don't initialize engine here
+        # We'll create a fresh engine for each request to avoid blocking
+        self.rate = 150
+        self.volume = 1.0
+        self.preferred_voice_id = None
+
+        # Try to find a female voice ID on first init
+        try:
+            temp_engine = pyttsx3.init()
+            voices = temp_engine.getProperty('voices')
+            for voice in voices:
+                if 'female' in voice.name.lower() or 'zira' in voice.name.lower():
+                    self.preferred_voice_id = voice.id
+                    break
+            temp_engine.stop()
+            del temp_engine
+        except:
+            pass
 
     async def text_to_speech(
         self,
         text: str,
-        voice: str = "nova",  # nova, alloy, echo, fable, onyx, shimmer
+        voice: str = "default",  # Ignored for pyttsx3, kept for compatibility
         speed: float = 1.0,
         return_format: str = "base64"  # base64 or file_path
     ) -> dict:
         """
-        Convert text to speech audio
+        Convert text to speech audio using pyttsx3 (offline)
 
         Args:
             text: Text to convert to speech
-            voice: Voice to use (nova is good for Nigerian English)
-            speed: Speech speed (0.25 to 4.0)
+            voice: Ignored (kept for API compatibility)
+            speed: Speech speed multiplier
             return_format: "base64" returns base64 encoded audio, "file_path" returns temp file path
 
         Returns:
@@ -48,44 +66,61 @@ class TTSService:
         """
 
         try:
-            # Generate speech using OpenAI TTS
-            response = self.client.audio.speech.create(
-                model="tts-1",  # tts-1 or tts-1-hd (HD is higher quality, slower)
-                voice=voice,
-                input=text,
-                speed=speed
-            )
+            # Create a FRESH engine for this request to avoid blocking
+            engine = pyttsx3.init()
 
-            # Estimate duration (rough approximation: ~150 words per minute at speed 1.0)
+            # Configure voice settings
+            engine.setProperty('rate', self.rate)
+            engine.setProperty('volume', self.volume)
+
+            if self.preferred_voice_id:
+                try:
+                    engine.setProperty('voice', self.preferred_voice_id)
+                except:
+                    pass
+
+            # Create a temporary file to save the audio
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as temp_audio:
+                audio_path = temp_audio.name
+
+            # Generate speech and save to file
+            engine.save_to_file(text, audio_path)
+            engine.runAndWait()
+
+            # Clean up engine
+            engine.stop()
+            del engine
+
+            # Estimate duration (rough approximation: ~150 words per minute)
             word_count = len(text.split())
             duration_estimate = (word_count / 150) * 60 / speed
 
             if return_format == "base64":
-                # Return base64 encoded audio
-                audio_bytes = response.content
-                audio_base64 = base64.b64encode(audio_bytes).decode('utf-8')
+                # Read the audio file and encode to base64
+                with open(audio_path, 'rb') as audio_file:
+                    audio_bytes = audio_file.read()
+                    audio_base64 = base64.b64encode(audio_bytes).decode('utf-8')
+
+                # Clean up temp file
+                import os
+                os.unlink(audio_path)
 
                 return {
                     "success": True,
                     "audio_base64": audio_base64,
                     "text": text,
                     "duration_estimate": duration_estimate,
-                    "format": "mp3",
+                    "format": "wav",
                     "error": None
                 }
 
             else:  # file_path
-                # Save to temporary file
-                with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as temp_audio:
-                    temp_audio.write(response.content)
-                    audio_path = temp_audio.name
-
                 return {
                     "success": True,
                     "audio_path": audio_path,
                     "text": text,
                     "duration_estimate": duration_estimate,
-                    "format": "mp3",
+                    "format": "wav",
                     "error": None
                 }
 

@@ -4,11 +4,20 @@ from app.core.config import settings
 from app.models.base import Base
 
 # Create database engine
-engine = create_engine(
-    settings.DATABASE_URL,
-    pool_pre_ping=True,
-    echo=settings.ENVIRONMENT == "development"
-)
+# SQLite-specific settings: connect_args for threading, pool_pre_ping for connection health
+if settings.DATABASE_URL.startswith("sqlite"):
+    engine = create_engine(
+        settings.DATABASE_URL,
+        connect_args={"check_same_thread": False},  # Allow SQLite to work with multiple threads
+        echo=settings.ENVIRONMENT == "development"
+    )
+else:
+    # PostgreSQL or other databases
+    engine = create_engine(
+        settings.DATABASE_URL,
+        pool_pre_ping=True,
+        echo=settings.ENVIRONMENT == "development"
+    )
 
 # Create session factory
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
